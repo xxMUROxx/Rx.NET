@@ -199,7 +199,7 @@ namespace Tests
 
             try
             {
-                t.Wait(30000);
+                t.Wait(5000);
                 Assert.True(false);
             }
             catch

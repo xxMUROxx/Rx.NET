@@ -58,36 +58,68 @@ namespace System.Linq
                 {
                     cancellationTokenSource.Cancel();
                 }
-                Dispose();
+         //       Dispose();
                 Debug.WriteLine("Canceled");
             }
 
             public TSource Current => current;
 
-            public async Task<bool> MoveNext(CancellationToken cancellationToken)
+            public Task<bool> MoveNext(CancellationToken cancellationToken)
             {
-              //  using (var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, cancellationTokenSource.Token))
-                using (cancellationToken.Register(Cancel))
 
-                {
-                    try
-                    {
-                        var result = await MoveNextCore(cancellationTokenSource.Token).ConfigureAwait(false);
+                
 
-                     //   cts.Dispose();
-                        //if (cts.IsCancellationRequested)
-                        //{
-                        //    Dispose();
-                        //}
+                var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, cancellationTokenSource.Token);
 
-                        return result;
-                    }
-                    catch
-                    {
-                        Dispose();
-                        throw;
-                    }
-                }
+                var reg = cts.Token.Register(() =>
+                                             {
+                                                 Debug.WriteLine("Linked token cancelled");
+                                                 Dispose();
+                                             });
+                
+                var tcs = new TaskCompletionSource<bool>(Tuple.Create(cts, reg)); ;
+
+                var task = MoveNextCore(cts.Token);                
+                task.ContinueWith((t, _) =>
+                                  {
+                                      Debug.WriteLine("Continue With after task");
+
+                                      reg.Dispose();
+                                      cts.Dispose();
+
+                                      // Exception, or canceled
+                                      if (t.IsFaulted || t.IsCanceled)
+                                      {
+                                          if (t.IsCanceled)
+                                              tcs.SetCanceled();
+                                          else if (t.IsFaulted)
+                                              tcs.SetException(t.Exception.InnerExceptions);
+
+
+
+                                          Dispose();
+                                      }
+                                      else
+                                      {
+                                          tcs.SetResult(t.Result);
+                                      }
+
+                                  }, null, TaskContinuationOptions.ExecuteSynchronously);
+
+                return tcs.Task;
+
+                //{
+                //    try
+                //    {
+                //        var result = await MoveNextCore(cts.Token).ConfigureAwait(false);
+                //        return result;
+                //    }
+                //    catch
+                //    {
+                //        Dispose();
+                //        throw;
+                //    }
+                //}
             }
 
             public abstract Task<bool> MoveNextCore(CancellationToken cancellationToken);

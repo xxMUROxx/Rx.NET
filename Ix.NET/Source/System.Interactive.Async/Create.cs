@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -28,7 +29,12 @@ namespace System.Linq
             return CreateEnumerator(
                 async ct =>
                 {
-                    using (ct.Register(dispose))
+                    Debug.WriteLine("ct passed");
+                    using (ct.Register(() =>
+                                       {
+                                           Debug.WriteLine("ct from create enum");
+                                           dispose();
+                                       }))
                     {
                         try
                         {
@@ -55,6 +61,7 @@ namespace System.Linq
             self = new AnonymousAsyncEnumerator<T>(
                 async ct =>
                 {
+                    Debug.WriteLine("ct passed from method1");
                     var tcs = new TaskCompletionSource<bool>();
 
                     var stop = new Action(
@@ -107,6 +114,8 @@ namespace System.Linq
 
             public Task<bool> MoveNext(CancellationToken cancellationToken)
             {
+                Debug.WriteLine("ct passed from method2");
+
                 if (_disposed)
                     return TaskExt.False;
 
