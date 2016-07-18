@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,6 +26,7 @@ namespace System.Linq
                     return CreateEnumerator(
                         ct => Task.Run(() =>
                                        {
+                                           ct.Register(() => Debug.WriteLine("Canceled Item"));
                                            var res = false;
                                            try
                                            {

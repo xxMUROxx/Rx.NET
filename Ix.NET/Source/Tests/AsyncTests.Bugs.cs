@@ -99,7 +99,7 @@ namespace Tests
 #endif
 
         [Fact]
-        public void CorrectDispose()
+        public async void CorrectDispose()
         {
             var disposed = new TaskCompletionSource<bool>();
 
@@ -111,11 +111,17 @@ namespace Tests
             var ys = xs.Select(x => x + 1);
 
             var e = ys.GetEnumerator();
+            
+            // We have to call move next because otherwise the internal enumerator is never allocated
+            await e.MoveNext();
             e.Dispose();
+
+            await disposed.Task;
 
             Assert.True(disposed.Task.Result);
 
-            Assert.False(e.MoveNext().Result);
+            var next = await e.MoveNext();
+            Assert.False(next);
         }
 
         [Fact]
@@ -134,6 +140,7 @@ namespace Tests
             var e = ys.GetEnumerator();
             await Assert.ThrowsAsync<Exception>(() => e.MoveNext());
 
+            await disposed.Task;
             Assert.True(disposed.Task.Result);
         }
 
@@ -181,7 +188,8 @@ namespace Tests
         public void CanCancelMoveNext()
         {
             var evt = new ManualResetEvent(false);
-            var xs = Blocking(evt).ToAsyncEnumerable().Select(x => x).Where(x => true);
+            var xs = Blocking(evt).ToAsyncEnumerable().Where(x => true);
+          //  var xs = Blocking(evt).ToAsyncEnumerable().Select(x => x).Where(x => true);
 
             var e = xs.GetEnumerator();
             var cts = new CancellationTokenSource();
@@ -191,7 +199,7 @@ namespace Tests
 
             try
             {
-                t.Wait(WaitTimeoutMs);
+                t.Wait(30000);
                 Assert.True(false);
             }
             catch
