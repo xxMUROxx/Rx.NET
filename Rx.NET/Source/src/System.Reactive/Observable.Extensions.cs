@@ -35,6 +35,16 @@ namespace System
             return source.Subscribe/*Unsafe*/(new AnonymousObserver<T>(Stubs<T>.Ignore, Stubs.Throw, Stubs.Nop));
         }
 
+        public static IDisposable Subscribe<T>(this IObservable<T> source, Action onNext)
+        {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+            if (onNext == null)
+                throw new ArgumentNullException(nameof(onNext));
+
+            return source.Subscribe/*Unsafe*/(new AnonymousObserver<T>(_ => onNext(), Stubs.Throw, Stubs.Nop));
+        }
+        
         /// <summary>
         /// Subscribes an element handler to an observable sequence.
         /// </summary>
